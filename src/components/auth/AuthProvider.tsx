@@ -1,7 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { User } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/client';
 
 interface AuthContextType {
   user: User | null;
@@ -25,40 +26,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Get environment variables
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  // Debug logging (only in development)
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Supabase URL exists:', !!supabaseUrl);
-      console.log('Supabase Anon Key exists:', !!supabaseAnonKey);
-      // Log first few characters of URL for verification (safely)
-      if (supabaseUrl) {
-        console.log('Supabase URL starts with:', supabaseUrl.substring(0, 10) + '...');
-      }
-    }
-  }, [supabaseUrl, supabaseAnonKey]);
-
-  const supabase = createClientComponentClient({
-    supabaseUrl: supabaseUrl || '',
-    supabaseKey: supabaseAnonKey || '',
-  });
+  const supabase = createClient();
 
   useEffect(() => {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      const errorMsg = 'Missing Supabase configuration. Please check your environment variables.';
-      console.error(errorMsg, { 
-        hasUrl: !!supabaseUrl, 
-        hasKey: !!supabaseAnonKey,
-        env: process.env.NODE_ENV
-      });
-      setError(errorMsg);
-      setLoading(false);
-      return;
-    }
-
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -78,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth, supabaseUrl, supabaseAnonKey]);
+  }, [supabase.auth]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -96,15 +66,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       <div className="p-4 bg-red-50 text-red-700 rounded-md">
         <p className="font-medium">Authentication Error</p>
         <p className="mt-1">{error}</p>
-        {process.env.NODE_ENV === 'development' && (
-          <pre className="mt-2 text-xs bg-red-100 p-2 rounded">
-            {JSON.stringify({ 
-              hasUrl: !!supabaseUrl, 
-              hasKey: !!supabaseAnonKey,
-              env: process.env.NODE_ENV 
-            }, null, 2)}
-          </pre>
-        )}
       </div>
     );
   }
