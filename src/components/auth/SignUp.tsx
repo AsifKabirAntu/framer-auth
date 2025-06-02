@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client';
 import { getSiteURL } from '@/lib/utils/url';
 
 interface SignUpProps {
-  redirectTo?: string;
   onSignUp?: () => void;
   className?: string;
   buttonText?: string;
@@ -14,7 +13,6 @@ interface SignUpProps {
 }
 
 export default function SignUp({
-  redirectTo = '/',
   onSignUp,
   className = '',
   buttonText = 'Sign Up',
