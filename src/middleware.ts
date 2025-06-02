@@ -3,28 +3,50 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
+  try {
+    const res = NextResponse.next();
+    const supabase = createMiddlewareClient({ req, res });
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    // Skip auth check for public routes
+    const publicRoutes = ['/auth/signin', '/auth/signup', '/auth/callback'];
+    if (publicRoutes.some(route => req.nextUrl.pathname.startsWith(route))) {
+      return res;
+    }
 
-  // Add your protected routes here
-  const protectedRoutes = ['/dashboard', '/profile', '/members'];
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    req.nextUrl.pathname.startsWith(route)
-  );
+    // Add your protected routes here
+    const protectedRoutes = ['/dashboard', '/profile', '/members'];
+    const isProtectedRoute = protectedRoutes.some((route) =>
+      req.nextUrl.pathname.startsWith(route)
+    );
 
-  // Redirect to login if accessing protected route without session
-  if (isProtectedRoute && !session) {
-    const redirectUrl = req.nextUrl.clone();
-    redirectUrl.pathname = '/auth/signin';
-    redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname);
-    return NextResponse.redirect(redirectUrl);
+    if (isProtectedRoute) {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session) {
+          const redirectUrl = req.nextUrl.clone();
+          redirectUrl.pathname = '/auth/signin';
+          redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname);
+          return NextResponse.redirect(redirectUrl);
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+        // If there's an auth error, redirect to sign in
+        const redirectUrl = req.nextUrl.clone();
+        redirectUrl.pathname = '/auth/signin';
+        return NextResponse.redirect(redirectUrl);
+      }
+    }
+
+    return res;
+  } catch (error) {
+    console.error('Middleware error:', error);
+    // If there's any error, allow the request to proceed
+    // This prevents the middleware from breaking the entire app
+    return NextResponse.next();
   }
-
-  return res;
 }
 
 export const config = {
@@ -35,7 +57,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - api routes
      */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public/|api/).*)',
   ],
 }; 
