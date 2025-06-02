@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 
 interface AuthContextType {
   user: User | null;
@@ -26,9 +26,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Check if Supabase is configured
+  const isConfigured = isSupabaseConfigured();
   const supabase = createClient();
 
   useEffect(() => {
+    if (!isConfigured) {
+      setError('Supabase configuration is missing. Please check your environment variables.');
+      setLoading(false);
+      return;
+    }
+
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -48,10 +56,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth]);
+  }, [supabase.auth, isConfigured]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    if (isConfigured) {
+      await supabase.auth.signOut();
+    }
   };
 
   const value = {
