@@ -29,6 +29,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+  // Debug logging (only in development)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Supabase URL exists:', !!supabaseUrl);
+      console.log('Supabase Anon Key exists:', !!supabaseAnonKey);
+      // Log first few characters of URL for verification (safely)
+      if (supabaseUrl) {
+        console.log('Supabase URL starts with:', supabaseUrl.substring(0, 10) + '...');
+      }
+    }
+  }, [supabaseUrl, supabaseAnonKey]);
+
   const supabase = createClientComponentClient({
     supabaseUrl: supabaseUrl || '',
     supabaseKey: supabaseAnonKey || '',
@@ -36,7 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!supabaseUrl || !supabaseAnonKey) {
-      setError('Missing Supabase configuration. Please check your environment variables.');
+      const errorMsg = 'Missing Supabase configuration. Please check your environment variables.';
+      console.error(errorMsg, { 
+        hasUrl: !!supabaseUrl, 
+        hasKey: !!supabaseAnonKey,
+        env: process.env.NODE_ENV
+      });
+      setError(errorMsg);
       setLoading(false);
       return;
     }
@@ -47,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     }).catch((err) => {
       console.error('Error getting session:', err);
-      setError('Failed to initialize authentication');
+      setError('Failed to initialize authentication: ' + err.message);
       setLoading(false);
     });
 
@@ -76,7 +94,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   if (error) {
     return (
       <div className="p-4 bg-red-50 text-red-700 rounded-md">
-        {error}
+        <p className="font-medium">Authentication Error</p>
+        <p className="mt-1">{error}</p>
+        {process.env.NODE_ENV === 'development' && (
+          <pre className="mt-2 text-xs bg-red-100 p-2 rounded">
+            {JSON.stringify({ 
+              hasUrl: !!supabaseUrl, 
+              hasKey: !!supabaseAnonKey,
+              env: process.env.NODE_ENV 
+            }, null, 2)}
+          </pre>
+        )}
       </div>
     );
   }
