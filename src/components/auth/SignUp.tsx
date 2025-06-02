@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getSiteURL } from '@/lib/utils/url';
 
 interface SignUpProps {
   redirectTo?: string;
@@ -35,11 +36,12 @@ export default function SignUp({
     setMessage(null);
 
     try {
+      const siteUrl = getSiteURL();
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}${redirectTo}`,
+          emailRedirectTo: `${siteUrl}/auth/callback`,
         },
       });
 
